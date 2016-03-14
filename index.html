@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Happy Numbers</title>
+  <!-- bootstrap -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+  <!-- bootswatch -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootswatch/3.3.6/readable/bootstrap.min.css">
+  <!-- sweetalert css -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/1.1.3/sweetalert.min.css">
+  <!-- styles -->
+  <style>
+    .row {
+      padding-top: 1em;
+    }
+    .hero {
+      background: #8440E5;
+      color: white;
+      padding: 3em;
+      margin-bottom: 1em;
+    }
+    .hero h1 {
+      color: white;
+    }
+    #instructions {
+      margin-bottom: 2em;
+    }
+    .instrBtn {
+      color: grey;
+    }
+    #game{
+      font-size: 24px;
+    }
+    .numInputs {
+      margin-bottom: 2em;
+      text-align: right;
+    }
+    .numOutputs {
+      padding-top: 5px;
+      height: 114px;
+      text-align: center;
+    }
+    .numInputGroup {
+      width: 2em;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .numBtn {
+      width: 100%;
+    }
+    .timer {
+      padding-bottom: 2em;
+    }
+    .start {
+      text-align: right;
+      padding-right: 1em;
+    }
+    .time {
+      text-align: left;
+      padding-left: 1em;
+    }
+    .gameBtn {
+      width: 7em;
+      text-align: center;
+    }
+
+    @media (max-width:768px){
+      .numInputs {
+        text-align: center;
+      }
+      .numOutputs {
+        text-align: center;
+      }
+      .numOutputs small {
+        font-size: 16px;
+      }
+      .goalOut {
+        text-align: left;
+      }
+      .resultOut {
+        text-align: right;
+      }
+    }
+  </style>
+
+  <!-- angular -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.5.0/angular.min.js"></script>
+  <!-- sweetalert js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/1.1.3/sweetalert.min.js"></script>
+
+  <script>
+  'use strict';
+
+  angular.module('happyApp', [])
+    .controller('gameCtrl', gameCtrl)
+    .filter('stopwatch', timerFilter)
+
+  function gameCtrl($scope, $interval){
+    // game states are 'new', 'playing', 'paused'
+    $scope.state = 'new';
+    $scope.nums = { A:'A', B:'B', C:'C' };
+    $scope.time = 0;
+    $scope.result = () => Object.keys($scope.nums).reduce((acc, num) => {
+      return acc + factorial($scope.nums[num]);
+    }, 0);
+    $scope.goal = () => Object.keys($scope.nums).reduce((acc, num) => {
+      return acc + $scope.nums[num].toString();
+    }, '');
+    $scope.operate = (num, sign) => {
+      if (sign === '+') $scope.nums[num] = ++$scope.nums[num] || 0;
+      if (sign === '-') $scope.nums[num] = Math.max(0, --$scope.nums[num] || 0);
+      checkIfWinning();
+    }
+
+    $scope.startGame = () => {
+      $scope.state = 'playing';
+      $scope.nums = { A: 0, B:0, C:0 }
+      timer()
+    }
+    $scope.stopGame = () => {
+      $scope.state = 'paused';
+      timer();
+      swal(resignSwalOpts, function(){$scope.restart()}
+      )
+    }
+    $scope.restart = () => {
+      $scope.state = 'new';
+      $scope.nums = { A:'A', B:'B', C:'C' };
+      $scope.time = 0;
+    }
+
+    let checkIfWinning = () => {
+      if ($scope.goal() !== $scope.result().toString()) return
+      $scope.stopGame();
+      winSwalOpts.text = `Contratulations! Your time was ${Math.floor($scope.time/10)/100} seconds! Not bad`;
+      swal(winSwalOpts, function(){$scope.restart()})
+    }
+
+    let interval
+    let timer = () => {
+      if (interval){
+        $interval.cancel(interval);
+        return interval = null;
+      }
+      let start = Date.now();
+      interval = $interval(() => {
+        $scope.time = Date.now() - start;
+      }, 61)
+    }
+
+    let resignSwalOpts = {
+      title: 'Nice Try',
+      text: `You probably have better things to do than guess for happy numbers all day. The numbers you are looking for are ${findHappyNumbers()}.`,
+      type: "error",
+      confirmButtonText: "I'm off to do something better with my life",
+      closeOnConfirm: true
+    }
+
+    let winSwalOpts = {
+      title: 'You Win!',
+      type: "success",
+      confirmButtonText: "Play Again",
+      closeOnConfirm: true
+    }
+
+  }
+
+  function timerFilter() {
+    function padZero(n, num) {
+      return ('0'.repeat(n) + num).slice(-1*n);
+    }
+    return function(millisecs){
+      let mins = Math.floor(millisecs/60000);
+      let secs = Math.floor(millisecs%60000/1000);
+      let centiSecs = Math.floor(millisecs%1000/10);
+      return padZero(2, mins) + ':' + padZero(2, secs) + ':' + padZero(2, centiSecs);
+    }
+  }
+
+  // We're going to call this function often with the same inputs,
+  // so we memoize it.
+  let memo = {'0': 1};
+  function factorial(n) {
+    if (typeof n !== 'number' || n < 0 || n%1 !== 0) return;
+    return memo[n] = memo[n] || n*factorial(n-1);
+  }
+
+  function factorialSum(arr) {
+    return arr.reduce((acc, num) => {
+      return acc + factorial(num);
+    }, 0)
+  }
+
+  function findHappyNumbers() {
+    let arr = [...Array(50)].map((_,i) => i+1)
+    // find all the combinations of 3 numbers in 1:50
+    let combs = combWithRep(arr, 3);
+    // check if some combination can permute to be happy
+    let happyNums;
+    combs.some(comb => {
+      let factSumStr = factorialSum(comb).toString();
+      return permute(comb).some(perm => {
+        if (perm.join('') === factSumStr){
+          happyNums = perm
+          return perm;
+        }
+      })
+    })
+    return happyNums
+  }
+
+  // finds the unique combinations of n elements in an array of unique elements
+  // given that you can reuse the same elements
+  function combWithRep(arr, n){
+    if (n === 0) return [[]];
+    let ans = [];
+    arr.forEach((el, i) => {
+      var combs = combWithRep(arr.slice(i), n-1);
+      ans = ans.concat( combs.map(comb => comb.concat(el)) );
+    })
+    return ans
+  }
+
+  // returns the permutatios of arr
+  function permute(arr, acc, ans) {
+    acc = acc || [];
+    ans = ans || [];
+    if (!arr.length) return ans.concat([acc]);
+    for (var i = 0; i < arr.length; i++) {
+      ans = permute( arr.slice(0,i).concat(arr.slice(i+1, arr.length)), acc.concat(arr[i]), ans);
+    }
+    return ans
+  }
+
+  </script>
+</head>
+<body ng-app="happyApp">
+  <div class="container-fluid">
+    <div class="hero row">
+      <h1 class="text-center"> Happy Number Game </h1>
+    </div>
+    <div id="instructions" class="row">
+      <div  class="col-xs-12 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 col-lg-6 col-lg-offset-3">
+        <h3 class="text-center">How quickly can you find the happy numbers?</h3>
+        <h6 class="text-center instrBtn" ng-click="instructions = !instructions">{{instructions ? 'Hide' : 'Show'}} instructions</h6>
+        <section ng-show="instructions">
+          <p>The numbers A, B, and C will be happy if the following is true:</p>
+          <p><code>A! + B! + C! = ABC</code></p>
+          <p>where ABC is the concatination of the digits of A, B and C.</p> <p>For instance, the numbers 3, 12, and 4 are not happy because 3! + 12! + 4! ≠ 3124</p>
+          <p>The faster you can find them, the better your score!</p>
+          <p>Ready? Click <strong>start</strong> to begin.</p>
+        </section>
+      </div>
+    </div>
+    <div id="game" class="row" ng-controller="gameCtrl">
+      <div class="col-xs-12 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 col-lg-6 col-lg-offset-3">
+        <div class="timer col-xs-12">
+          <div class="start col-xs-6">
+            <button class="btn btn-success gameBtn" ng-click="startGame()" ng-if="state === 'new'">Start</button>
+            <button class="btn btn-danger gameBtn" ng-click="stopGame()" ng-if="state === 'playing'">Give Up</button>
+            <button class="btn btn-primary gameBtn" ng-click="restart()" ng-if="state === 'paused'">Restart</button>
+          </div>
+          <div class="time col-xs-6">
+            {{time | stopwatch}}
+          </div>
+        </div>
+        <div class="numInputs col-xs-12 col-sm-6">
+          <fieldset ng-disabled="state !== 'playing'">
+            <div class="numInputGroup">
+              <button class="btn btn-default numBtn up" ng-click="operate('A','+')"><span class="glyphicon glyphicon-chevron-up" aria-hidden="true"></span></button>
+              <div class="inputNum text-center">{{nums.A + '!'}}</div>
+              <button class="btn btn-default numBtn down" ng-click="operate('A','-')"><span class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span></button>
+            </div>
+            <span>+</span>
+            <div class="numInputGroup">
+              <button class="btn btn-default numBtn up" ng-click="operate('B','+')"><span class="glyphicon glyphicon-chevron-up" aria-hidden="true"></span></button>
+              <div class="inputNum text-center">{{nums.B + '!'}}</div>
+              <button class="btn btn-default numBtn down" ng-click="operate('B','-')"><span class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span></button>
+            </div>
+            <span>+</span>
+            <div class="numInputGroup">
+              <button class="btn btn-default numBtn up" ng-click="operate('C','+')"><span class="glyphicon glyphicon-chevron-up" aria-hidden="true"></span></button>
+              <div class="inputNum text-center">{{nums.C + '!'}}</div>
+              <button class="btn btn-default numBtn down" ng-click="operate('C','-')"><span class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span></button>
+            </div>
+          </div>
+        </fieldset>
+        <div class="numOutputs col-xs-12 col-sm-2">
+          <div class="resultOut col-xs-5 col-sm-12">
+            <span ng-show="state !== 'new'">{{goal()}}</span>
+            <small ng-show="state === 'new'">concatenation</small>
+          </div>
+          <div class="col-xs-2 col-sm-12">
+            <span>{{goal() === result().toString() ? '=' : '≠'}}</span>
+          </div>
+          <div class="goalOut col-xs-5 col-sm-12">
+            <span ng-show="state !== 'new'">{{result() || 0}}</span>
+            <small ng-show="state === 'new'">factorial&#160;sum</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
